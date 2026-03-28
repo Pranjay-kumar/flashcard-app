@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flashcard Learn</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+  <div class="bg-shape shape-1"></div>
+  <div class="bg-shape shape-2"></div>
+  <div class="app">
+    <aside class="sidebar card">
+      <div class="sidebar-top">
+        <h1>Decks</h1>
+        <button id="newDeckBtn" class="btn btn-soft">New</button>
+      </div>
+      <button id="importOpenBtn" class="btn btn-soft full">Import Deck</button>
+      <div id="deckList" class="deck-list"></div>
+    </aside>
+
+    <main class="main card">
+      <header class="main-header">
+        <div>
+          <p class="eyebrow">Flashcard App</p>
+          <h2 id="deckTitle">Select a Deck</h2>
+        </div>
+        <div class="header-actions">
+          <button id="addCardBtn" class="btn btn-soft">Add Card</button>
+          <button id="learnBtn" class="btn btn-primary">Learn</button>
+          <button id="reviewBtn" class="btn btn-soft">Review</button>
+          <button id="qualityBtn" class="btn btn-soft">Check Cards</button>
+          <button id="settingsBtn" class="btn btn-soft">Settings</button>
+          <button id="deleteDeckBtn" class="btn btn-danger">Delete</button>
+        </div>
+      </header>
+
+      <section id="cardsTable" class="table-wrap"></section>
+    </main>
+  </div>
+
+  <dialog id="importDialog" class="modal">
+    <form method="dialog" class="modal-content">
+      <div class="modal-head">
+        <h3>Import Your Data</h3>
+        <button class="icon-btn">x</button>
+      </div>
+      <label>Deck Name</label>
+      <input id="importDeckName" type="text" placeholder="Biology Unit 1" />
+
+      <label>Paste terms and definitions</label>
+      <textarea id="importText" rows="8" placeholder="Word 1[TAB]Definition 1"></textarea>
+
+      <div class="import-grid">
+        <div>
+          <p>Between term and definition</p>
+          <select id="termSeparatorMode">
+            <option value="tab">Tab</option>
+            <option value="comma">Comma</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input id="termCustom" type="text" placeholder="Custom separator" />
+        </div>
+        <div>
+          <p>Between cards</p>
+          <select id="cardSeparatorMode">
+            <option value="newline">New line</option>
+            <option value="semicolon">Semicolon</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input id="cardCustom" type="text" placeholder="Custom separator" />
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="importBtn" type="button" class="btn btn-primary">Import</button>
+      </div>
+      <p id="importMsg" class="status"></p>
+    </form>
+  </dialog>
+
+  <dialog id="createDeckDialog" class="modal">
+    <form method="dialog" class="modal-content create-modal">
+      <div class="modal-head create-modal-head">
+        <h3>Create New Deck</h3>
+        <div class="create-head-actions">
+          <button id="createDeckSubmitBtn" type="button" class="btn btn-primary">Finish</button>
+          <button class="icon-btn">x</button>
+        </div>
+      </div>
+      <p class="create-subtitle">Build your set fast. Add as many cards as you need before saving.</p>
+
+      <label>Deck Title</label>
+      <input id="createDeckName" type="text" placeholder="Biology Chapter 3" />
+
+      <div class="create-cards-head">
+        <p id="createRowCount">Cards: 0</p>
+        <div class="create-bulk-add">
+          <label for="createBulkCount">Insert cards</label>
+          <input id="createBulkCount" type="number" min="1" max="100" value="5" />
+          <button id="addCreateRowsBtn" type="button" class="btn btn-soft">Insert</button>
+        </div>
+      </div>
+      <div class="create-grid-head">
+        <p>Term</p>
+        <p>Definition</p>
+      </div>
+
+      <div id="createCardsList" class="create-cards-list"></div>
+
+      <div class="create-bottom-actions">
+        <button id="addCreateRowBtn" type="button" class="btn btn-soft">New Card</button>
+      </div>
+      <p id="createDeckMsg" class="status"></p>
+    </form>
+  </dialog>
+
+  <section id="learnScreen" class="screen hidden">
+    <div class="screen-panel card">
+      <div class="learn-top">
+        <div class="learn-title-block">
+          <p class="eyebrow">Learn Mode</p>
+          <h3>Cram Session</h3>
+          <p id="learnProgress" class="learn-progress-line"></p>
+        </div>
+        <div class="learn-top-actions">
+          <button id="learnFullscreenBtn" class="btn btn-soft">Full Screen</button>
+          <button id="closeLearnBtn" class="btn btn-soft">Exit</button>
+        </div>
+      </div>
+      <div class="learn-meter" aria-live="polite">
+        <div class="learn-meter-labels">
+          <p id="learnBatchLabel">Batch progress: 0/0</p>
+          <p id="learnDeckLabel">Deck mastered: 0/0</p>
+        </div>
+        <div class="learn-meter-track">
+          <div id="learnMeterFill" class="learn-meter-fill"></div>
+        </div>
+      </div>
+      <div class="learn-stage">
+        <div id="flipCard" class="flip-card">
+          <div class="flip-card-inner">
+            <div class="flip-face flip-front">
+              <p class="face-title">Term</p>
+              <h3 id="learnTerm"></h3>
+            </div>
+            <div class="flip-face flip-back">
+              <p class="face-title">Definition</p>
+              <h3 id="learnDefinition"></h3>
+            </div>
+          </div>
+        </div>
+        <section class="voice-panel">
+          <p class="voice-flow">Flow: Hear term -> Speak answer -> Auto check -> Quick explanation</p>
+          <div class="voice-row primary">
+            <button id="voiceAutoBtn" class="btn btn-primary">Auto Voice: On</button>
+            <button id="speakTermBtn" class="btn btn-soft">Replay Term</button>
+            <button id="forceStopBtn" class="btn btn-warn hidden">Stop Listening</button>
+          </div>
+          <div id="manualVoiceRow" class="voice-row secondary">
+            <button id="voiceRecordBtn" class="btn btn-soft">Manual Record</button>
+            <button id="voiceEvaluateBtn" class="btn btn-soft" disabled>Manual Evaluate</button>
+          </div>
+          <textarea id="voiceTranscript" rows="2" placeholder="Transcript appears here..."></textarea>
+          <p id="voiceFeedback" class="status"></p>
+        </section>
+      </div>
+      <div class="learn-actions compact">
+        <button id="stillBtn" class="btn btn-warn" disabled>Still Learning</button>
+        <button id="correctBtn" class="btn btn-success" disabled>Correct</button>
+        </div>
+    </div>
+  </section>
+
+  <section id="reviewScreen" class="screen hidden">
+    <div class="screen-panel card">
+      <div class="learn-top">
+        <p id="reviewProgress"></p>
+        <button id="closeReviewBtn" class="btn btn-soft">Exit</button>
+      </div>
+      <div id="reviewCard" class="flip-card">
+        <div class="flip-card-inner">
+          <div class="flip-face flip-front">
+            <p class="face-title">Term</p>
+            <h3 id="reviewTerm"></h3>
+          </div>
+          <div class="flip-face flip-back">
+            <p class="face-title">Definition</p>
+            <h3 id="reviewDefinition"></h3>
+          </div>
+        </div>
+      </div>
+      <div class="learn-actions">
+        <button id="reviewPrevBtn" class="btn btn-soft">Previous</button>
+        <button id="reviewNextBtn" class="btn btn-soft">Next</button>
+      </div>
+    </div>
+  </section>
+
+  <dialog id="settingsDialog" class="modal">
+    <form method="dialog" class="modal-content">
+      <div class="modal-head">
+        <h3>Voice Settings</h3>
+        <button class="icon-btn">x</button>
+      </div>
+      <label>OpenRouter API Key</label>
+      <input id="openrouterToken" type="password" placeholder="sk-or-..." />
+
+      <label>OpenRouter Model</label>
+      <input id="openrouterModel" type="text" placeholder="openai/gpt-4o-mini" />
+
+      <label>Piper Executable Path</label>
+      <input id="piperExecutable" type="text" placeholder="piper" />
+
+      <label>Piper Voice Model</label>
+      <select id="piperVoiceSelect"></select>
+      <div class="settings-inline-actions">
+        <button id="uploadVoiceBtn" type="button" class="btn btn-soft">Upload Voice Files</button>
+        <input id="voiceFileInput" type="file" accept=".onnx,.json" multiple hidden />
+      </div>
+      <p class="settings-help">Upload Piper `.onnx` and matching `.onnx.json` files. They will be stored in `models/custom_voices/`.</p>
+
+      <label>Whisper Model Size</label>
+      <select id="whisperModelSize">
+        <option value="tiny">tiny</option>
+        <option value="base">base</option>
+        <option value="small">small</option>
+        <option value="medium">medium</option>
+      </select>
+
+      <label>Whisper Compute Type</label>
+      <select id="whisperComputeType">
+        <option value="int8">int8</option>
+        <option value="float16">float16</option>
+        <option value="float32">float32</option>
+      </select>
+
+      <label>Theme Builder</label>
+      <div class="theme-grid">
+        <div class="theme-item"><span>Background 1</span><input id="themeBg" type="color" value="#eaf3ff" /></div>
+        <div class="theme-item"><span>Background 2</span><input id="themeBg2" type="color" value="#dcecff" /></div>
+        <div class="theme-item"><span>Panel</span><input id="themePanel" type="color" value="#ffffff" /></div>
+        <div class="theme-item"><span>Text</span><input id="themeText" type="color" value="#1d2b4a" /></div>
+        <div class="theme-item"><span>Muted Text</span><input id="themeMuted" type="color" value="#60739d" /></div>
+        <div class="theme-item"><span>Primary</span><input id="themePrimary" type="color" value="#2f7cff" /></div>
+        <div class="theme-item"><span>Primary Dark</span><input id="themePrimaryDark" type="color" value="#2469db" /></div>
+        <div class="theme-item"><span>Danger</span><input id="themeDanger" type="color" value="#ef5a6f" /></div>
+        <div class="theme-item"><span>Success</span><input id="themeSuccess" type="color" value="#34b56f" /></div>
+        <div class="theme-item"><span>Warning</span><input id="themeWarning" type="color" value="#ffac3d" /></div>
+        <div class="theme-item"><span>Focus Ring</span><input id="themeRing" type="color" value="#87b6ff" /></div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="resetThemeBtn" type="button" class="btn btn-soft">Reset Theme</button>
+        <button id="saveSettingsBtn" type="button" class="btn btn-primary">Save Settings</button>
+      </div>
+      <p id="settingsMsg" class="status"></p>
+    </form>
+  </dialog>
+
+  <dialog id="qualityDialog" class="modal quality-modal">
+    <form method="dialog" class="modal-content quality-content">
+      <div class="modal-head">
+        <h3>Card Quality Review</h3>
+        <button id="qualityCloseBtn" type="button" class="icon-btn">x</button>
+      </div>
+      <p id="qualitySummary" class="quality-summary">Run a check to review spelling, grammar, and possible wrong cards.</p>
+      <div class="quality-toolbar">
+        <button id="qualityRunBtn" type="button" class="btn btn-primary">Run Check</button>
+        <select id="qualityFilter">
+          <option value="needs_fix">Needs Fix</option>
+          <option value="wrong_flag">Possible Wrong</option>
+          <option value="spelling_grammar">Spelling/Grammar</option>
+          <option value="all">All</option>
+          <option value="accepted">Accepted</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <button id="qualitySelectVisibleBtn" type="button" class="btn btn-soft">Select Visible</button>
+        <button id="qualityClearSelectionBtn" type="button" class="btn btn-soft">Clear Selection</button>
+        <button id="qualityApplyBtn" type="button" class="btn btn-primary">Apply Selected</button>
+      </div>
+      <div id="qualityProgressWrap" class="quality-progress hidden" aria-live="polite">
+        <div class="quality-progress-head">
+          <span id="qualityProgressLabel">Progress</span>
+          <span id="qualityProgressPct">0%</span>
+        </div>
+        <div class="quality-progress-track">
+          <div id="qualityProgressFill" class="quality-progress-fill"></div>
+        </div>
+      </div>
+      <div id="qualityList" class="quality-list"></div>
+      <p id="qualityMsg" class="status"></p>
+    </form>
+  </dialog>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

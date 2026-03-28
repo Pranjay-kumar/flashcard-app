@@ -1,0 +1,28 @@
+# Python cache and virtual envs
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# IDE / OS files
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Runtime app data (local, user-specific)
+settings.json
+decks.json
+learn_progress.json
+
+# Downloaded binary/model assets (recreate with setup_voice.py)
+models/
+tools/

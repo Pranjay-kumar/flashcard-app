@@ -1,0 +1,19 @@
+{
+  "openrouter_api_key": "",
+  "openrouter_model": "",
+  "piper_executable": "tools\\piper\\piper.exe",
+  "piper_model": "models\\en_US-lessac-medium.onnx",
+  "whisper_model_size": "base",
+  "whisper_compute_type": "int8",
+  "theme_bg": "#eaf3ff",
+  "theme_bg2": "#dcecff",
+  "theme_panel": "#ffffff",
+  "theme_text": "#1d2b4a",
+  "theme_muted": "#60739d",
+  "theme_primary": "#2f7cff",
+  "theme_primary_dark": "#2469db",
+  "theme_danger": "#ef5a6f",
+  "theme_success": "#34b56f",
+  "theme_warning": "#ffac3d",
+  "theme_ring": "#87b6ff"
+}
