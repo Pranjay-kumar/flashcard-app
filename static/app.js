@@ -838,9 +838,21 @@ async function deleteDeck() {
 }
 
 function openImport() {
+  resetImportForm();
   if (state.currentDeck) el.importDeckName.value = state.currentDeck.name;
-  el.importMsg.textContent = "";
   el.importDialog.showModal();
+}
+
+function resetImportForm() {
+  el.importMsg.textContent = "";
+  el.importText.value = "";
+  el.termSeparatorMode.value = "tab";
+  el.termCustom.value = "";
+  el.cardSeparatorMode.value = "newline";
+  el.cardCustom.value = "";
+  if (!state.currentDeck) {
+    el.importDeckName.value = "";
+  }
 }
 
 async function importDeck() {
@@ -858,6 +870,8 @@ async function importDeck() {
     el.importMsg.textContent = `Imported ${data.imported} cards.`;
     await loadDecks();
     await openDeck(payload.deck_name);
+    resetImportForm();
+    el.importDialog.close();
   } catch (err) {
     el.importMsg.textContent = err.message;
   }
