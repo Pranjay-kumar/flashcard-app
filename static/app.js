@@ -5,6 +5,10 @@ const state = {
   learn: null,
   review: null,
   settings: null,
+  filters: {
+    deckQuery: "",
+    cardQuery: "",
+  },
   voice: {
     mediaRecorder: null,
     audioChunks: [],
@@ -28,21 +32,27 @@ const AUTO_SILENCE_THRESHOLD = 0.015;
 const EVALUATION_ADVANCE_DELAY_MS = 2800;
 const STILL_LEARNING_COOLDOWN_CARDS = 3;
 const THEME_DEFAULTS = {
-  theme_bg: "#eaf3ff",
-  theme_bg2: "#dcecff",
-  theme_panel: "#ffffff",
-  theme_text: "#1d2b4a",
-  theme_muted: "#60739d",
-  theme_primary: "#2f7cff",
-  theme_primary_dark: "#2469db",
-  theme_danger: "#ef5a6f",
-  theme_success: "#34b56f",
-  theme_warning: "#ffac3d",
-  theme_ring: "#87b6ff",
+  theme_bg: "#f3efe7",
+  theme_bg2: "#e4dccf",
+  theme_panel: "#fffaf3",
+  theme_text: "#1f2933",
+  theme_muted: "#6b7280",
+  theme_primary: "#1f6b5d",
+  theme_primary_dark: "#17493f",
+  theme_danger: "#b85f4a",
+  theme_success: "#2f7a53",
+  theme_warning: "#b9852b",
+  theme_ring: "#8ab6aa",
 };
+
+let toastTimer = null;
 
 const el = {
   deckList: document.getElementById("deckList"),
+  deckSearchInput: document.getElementById("deckSearchInput"),
+  cardSearchInput: document.getElementById("cardSearchInput"),
+  deckMeta: document.getElementById("deckMeta"),
+  deckCountBadge: document.getElementById("deckCountBadge"),
   deckTitle: document.getElementById("deckTitle"),
   cardsTable: document.getElementById("cardsTable"),
   newDeckBtn: document.getElementById("newDeckBtn"),
@@ -136,6 +146,7 @@ const el = {
   qualityProgressFill: document.getElementById("qualityProgressFill"),
   qualityList: document.getElementById("qualityList"),
   qualityMsg: document.getElementById("qualityMsg"),
+  toast: document.getElementById("toast"),
 };
 
 function normalizeHexColor(value, fallback) {
@@ -203,7 +214,14 @@ async function api(url, options = {}) {
 async function loadDecks() {
   const data = await api("/api/decks");
   state.decks = data.decks;
+  if (state.currentDeck && !state.decks.some((deck) => deck.name === state.currentDeck.name)) {
+    state.currentDeck = null;
+  }
   renderDecks();
+  updateDeckMeta();
+  if (!state.currentDeck) {
+    renderCards([]);
+  }
 }
 
 function applySettingsToForm(settings) {
@@ -300,36 +318,141 @@ async function saveSettings() {
     body: JSON.stringify(payload),
   });
   state.settings = payload;
-  el.settingsMsg.textContent = "Saved.";
+  el.settingsMsg.textContent = "Settings saved.";
+  showToast("Settings saved.", "success");
 }
 
 function renderDecks() {
+  const filteredDecks = getFilteredDecks(state.decks);
+  el.deckCountBadge.textContent = state.filters.deckQuery
+    ? `${filteredDecks.length}/${state.decks.length} decks`
+    : `${state.decks.length} ${pluralize("deck", state.decks.length)}`;
+
+  if (!state.decks.length) {
+    el.deckList.innerHTML = `<p class="deck-list-empty">No decks yet. Start with a small study set, then grow it as you review.</p>`;
+    return;
+  }
+
+  if (!filteredDecks.length) {
+    el.deckList.innerHTML = `
+      <div class="deck-list-empty">
+        <p class="mb-2">No decks match "${escapeHtml(state.filters.deckQuery)}".</p>
+        <button type="button" class="btn btn-soft w-100" data-clear-deck-search>Clear deck search</button>
+      </div>
+    `;
+    const clearButton = el.deckList.querySelector("[data-clear-deck-search]");
+    if (clearButton) {
+      clearButton.onclick = clearDeckSearch;
+    }
+    return;
+  }
+
   el.deckList.innerHTML = "";
-  state.decks.forEach((deck) => {
+  filteredDecks.forEach((deck, index) => {
     const btn = document.createElement("button");
     btn.className = "deck-item";
     if (state.currentDeck && state.currentDeck.name === deck.name) {
       btn.classList.add("active");
     }
-    btn.textContent = `${deck.name} (${deck.count})`;
+    btn.innerHTML = `
+      <span class="deck-item-shell">
+        <span class="deck-item-copy">
+          <span class="deck-item-name">${escapeHtml(deck.name)}</span>
+          <span class="deck-item-meta">${deck.count} ${pluralize("card", deck.count)}</span>
+        </span>
+        <span class="deck-item-index">${index + 1}</span>
+      </span>
+    `;
     btn.onclick = () => openDeck(deck.name);
     el.deckList.appendChild(btn);
   });
 }
 
 function renderCards(cards) {
-  if (!cards.length) {
-    el.cardsTable.innerHTML = `<p style="padding:16px;margin:0;color:#60739d;">No cards yet.</p>`;
+  if (!state.currentDeck) {
+    el.cardsTable.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-inner">
+          <p class="table-eyebrow">Ready to study</p>
+          <h3>Pick a deck or create one from scratch</h3>
+          <p>Your library lives on the left. Once a deck is selected, this area turns into a cleaner reading table for terms and definitions.</p>
+          <div class="empty-actions">
+            <button type="button" class="btn btn-primary" data-empty-action="create">Create Deck</button>
+            <button type="button" class="btn btn-soft" data-empty-action="import">Import Cards</button>
+          </div>
+        </div>
+      </div>
+    `;
+    wireCardsTableActions();
     return;
   }
-  const rows = cards
-    .map((c) => `<tr><td>${escapeHtml(c.term)}</td><td>${escapeHtml(c.definition)}</td></tr>`)
+
+  if (!cards.length) {
+    el.cardsTable.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-inner">
+          <p class="table-eyebrow">Empty deck</p>
+          <h3>${escapeHtml(state.currentDeck.name)} has no cards yet</h3>
+          <p>Add a few starter cards now, or import a batch if you already have terms and definitions prepared.</p>
+          <div class="empty-actions">
+            <button type="button" class="btn btn-primary" data-empty-action="add-card">Add Card</button>
+            <button type="button" class="btn btn-soft" data-empty-action="import">Import Cards</button>
+          </div>
+        </div>
+      </div>
+    `;
+    wireCardsTableActions();
+    return;
+  }
+
+  const filteredCards = getFilteredCards(cards);
+
+  if (!filteredCards.length) {
+    el.cardsTable.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-inner">
+          <p class="table-eyebrow">No matches</p>
+          <h3>No cards match "${escapeHtml(state.filters.cardQuery)}"</h3>
+          <p>Try a broader term, or clear the search to get back to the full deck.</p>
+          <div class="empty-actions">
+            <button type="button" class="btn btn-primary" data-clear-card-search>Clear Search</button>
+          </div>
+        </div>
+      </div>
+    `;
+    wireCardsTableActions();
+    return;
+  }
+
+  const rows = filteredCards
+    .map((c, index) => `
+      <tr>
+        <td class="cell-index">${String(index + 1).padStart(2, "0")}</td>
+        <td class="term-cell"><strong>${escapeHtml(c.term)}</strong></td>
+        <td class="definition-cell"><strong>${escapeHtml(c.definition)}</strong></td>
+      </tr>
+    `)
     .join("");
   el.cardsTable.innerHTML = `
-    <table>
-      <thead><tr><th>Term</th><th>Definition</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
+    <div class="table-panel">
+      <div class="table-toolbar">
+        <div>
+          <p class="table-eyebrow">Current deck</p>
+          <h3 class="table-title">${escapeHtml(state.currentDeck.name)}</h3>
+          <p class="table-summary">Use this as your clean reading view before jumping into Learn, Review, or Card Quality Review.</p>
+        </div>
+        <div class="table-stats">
+          <span class="stat-chip">${filteredCards.length}/${cards.length} visible</span>
+          <span class="stat-chip">Study ready</span>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>#</th><th>Term</th><th>Definition</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
   `;
 }
 
@@ -346,8 +469,111 @@ async function openDeck(name) {
   const data = await api(`/api/decks/${encodeURIComponent(name)}`);
   state.currentDeck = data;
   el.deckTitle.textContent = data.name;
+  updateDeckMeta(data);
   renderCards(data.cards);
   renderDecks();
+}
+
+function pluralize(word, count) {
+  return count === 1 ? word : `${word}s`;
+}
+
+function normalizeSearchQuery(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getFilteredDecks(decks) {
+  const query = normalizeSearchQuery(state.filters.deckQuery);
+  if (!query) return decks;
+  return decks.filter((deck) => {
+    const haystack = `${deck.name} ${deck.count}`.toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+function getFilteredCards(cards) {
+  const query = normalizeSearchQuery(state.filters.cardQuery);
+  if (!query) return cards;
+  return cards.filter((card) => {
+    const haystack = `${card.term} ${card.definition}`.toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+function updateDeckMeta(deck = state.currentDeck) {
+  if (!deck) {
+    state.filters.cardQuery = "";
+    el.deckTitle.textContent = "Select a Deck";
+    el.deckMeta.textContent = "Choose a deck to review cards, start a learn session, or run a quick quality pass.";
+    el.cardSearchInput.value = "";
+    el.cardSearchInput.disabled = true;
+    el.cardSearchInput.placeholder = "Search cards in the current deck...";
+    return;
+  }
+  el.cardSearchInput.disabled = false;
+  const cardCount = Array.isArray(deck.cards) ? deck.cards.length : Number(deck.count || 0);
+  const filteredCount = Array.isArray(deck.cards) ? getFilteredCards(deck.cards).length : cardCount;
+  const searchSuffix = state.filters.cardQuery ? ` ${filteredCount} visible for "${state.filters.cardQuery}".` : "";
+  el.deckTitle.textContent = deck.name;
+  el.deckMeta.textContent = `${cardCount} ${pluralize("card", cardCount)} loaded. Start a focused study run, flip through review mode, or clean things up with AI-assisted quality checks.${searchSuffix}`;
+}
+
+function wireCardsTableActions() {
+  const createBtn = el.cardsTable.querySelector('[data-empty-action="create"]');
+  const importBtn = el.cardsTable.querySelector('[data-empty-action="import"]');
+  const addCardBtn = el.cardsTable.querySelector('[data-empty-action="add-card"]');
+  const clearCardSearchBtn = el.cardsTable.querySelector('[data-clear-card-search]');
+  if (createBtn) createBtn.onclick = openCreateDeckDialog;
+  if (importBtn) importBtn.onclick = openImport;
+  if (addCardBtn) {
+    addCardBtn.onclick = () => addCard().catch(showError);
+  }
+  if (clearCardSearchBtn) {
+    clearCardSearchBtn.onclick = clearCardSearch;
+  }
+}
+
+function showToast(message, tone = "default") {
+  if (!el.toast) return;
+  el.toast.textContent = message;
+  el.toast.className = `toast toast-${tone}`;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    el.toast.classList.add("hidden");
+  }, 3200);
+}
+
+function clearDeckSearch() {
+  state.filters.deckQuery = "";
+  el.deckSearchInput.value = "";
+  renderDecks();
+}
+
+function clearCardSearch() {
+  state.filters.cardQuery = "";
+  el.cardSearchInput.value = "";
+  if (state.currentDeck) {
+    updateDeckMeta(state.currentDeck);
+    renderCards(state.currentDeck.cards);
+  }
+}
+
+function runShortcut(action) {
+  if (action === "quality") {
+    openQualityDialog();
+    return;
+  }
+  if (!state.currentDeck) {
+    showToast("Select a deck first.", "warning");
+    return;
+  }
+  if (action === "learn") {
+    startLearn().catch(showError);
+    return;
+  }
+  if (action === "review") {
+    startReview();
+  }
 }
 
 function normalizeQualityResult(raw) {
@@ -568,7 +794,7 @@ function renderQualityList() {
 
 function openQualityDialog() {
   if (!state.currentDeck) {
-    alert("Select a deck first.");
+    showToast("Select a deck first.", "warning");
     return;
   }
   const seedResults = (state.currentDeck.cards || []).map((card, index) => normalizeQualityResult({
@@ -608,7 +834,7 @@ function setQualityProgress(done, total, label = "Progress") {
 
 async function runQualityCheck() {
   if (!state.currentDeck) {
-    alert("Select a deck first.");
+    showToast("Select a deck first.", "warning");
     return;
   }
   el.qualityMsg.textContent = "Checking cards with AI...";
@@ -812,7 +1038,10 @@ async function submitCreateDeck() {
 }
 
 async function addCard() {
-  if (!state.currentDeck) return alert("Select a deck first.");
+  if (!state.currentDeck) {
+    showToast("Select a deck first.", "warning");
+    return;
+  }
   const term = prompt("Term:");
   if (!term) return;
   const definition = prompt("Definition:");
@@ -823,18 +1052,23 @@ async function addCard() {
   });
   await openDeck(state.currentDeck.name);
   await loadDecks();
+  showToast("Card added.", "success");
 }
 
 async function deleteDeck() {
-  if (!state.currentDeck) return alert("Select a deck first.");
+  if (!state.currentDeck) {
+    showToast("Select a deck first.", "warning");
+    return;
+  }
   if (!confirm(`Delete "${state.currentDeck.name}"?`)) return;
   await api(`/api/decks/${encodeURIComponent(state.currentDeck.name)}`, {
     method: "DELETE",
   });
   state.currentDeck = null;
-  el.deckTitle.textContent = "Select a Deck";
+  updateDeckMeta();
   renderCards([]);
   await loadDecks();
+  showToast("Deck deleted.", "success");
 }
 
 function openImport() {
@@ -1150,8 +1384,14 @@ function pickNextLearnCardId() {
 }
 
 async function startLearn() {
-  if (!state.currentDeck) return alert("Select a deck first.");
-  if (!state.currentDeck.cards.length) return alert("This deck has no cards.");
+  if (!state.currentDeck) {
+    showToast("Select a deck first.", "warning");
+    return;
+  }
+  if (!state.currentDeck.cards.length) {
+    showToast("This deck has no cards yet.", "warning");
+    return;
+  }
 
   const currentFingerprint = deckFingerprint(state.currentDeck.cards);
   const saved = await api(`/api/learn-progress/${encodeURIComponent(state.currentDeck.name)}`);
@@ -1184,7 +1424,7 @@ function nextLearnCard() {
   maybeAdvanceLearnBatch();
   const nextCardId = pickNextLearnCardId();
   if (!nextCardId) {
-    alert(`Done! Attempts: ${s.attempts} | Correct: ${s.correct} | Still Learning taps: ${s.still}`);
+    showToast(`Session complete. ${s.correct}/${s.attempts} correct, ${s.still} still-learning taps.`, "success");
     if (state.currentDeck?.name) clearLearnProgress(state.currentDeck.name).catch(() => {});
     state.learn = null;
     exitLearnFullscreen().catch(() => {});
@@ -1256,8 +1496,14 @@ function markCorrect(force = false) {
 }
 
 function startReview() {
-  if (!state.currentDeck) return alert("Select a deck first.");
-  if (!state.currentDeck.cards.length) return alert("This deck has no cards.");
+  if (!state.currentDeck) {
+    showToast("Select a deck first.", "warning");
+    return;
+  }
+  if (!state.currentDeck.cards.length) {
+    showToast("This deck has no cards yet.", "warning");
+    return;
+  }
   state.review = {
     cards: [...state.currentDeck.cards],
     index: 0,
@@ -1686,6 +1932,17 @@ el.resetThemeBtn.onclick = () => {
   applyTheme(currentThemeFromForm());
 };
 el.importOpenBtn.onclick = openImport;
+el.deckSearchInput.oninput = () => {
+  state.filters.deckQuery = el.deckSearchInput.value.trim();
+  renderDecks();
+};
+el.cardSearchInput.oninput = () => {
+  state.filters.cardQuery = el.cardSearchInput.value.trim();
+  updateDeckMeta();
+  if (state.currentDeck) {
+    renderCards(state.currentDeck.cards);
+  }
+};
 el.addCreateRowBtn.onclick = () => {
   addCreateRows(1);
 };
@@ -1750,6 +2007,9 @@ el.reviewNextBtn.onclick = () => {
   renderReviewCard();
 };
 document.addEventListener("keydown", handleSpaceFlip);
+document.querySelectorAll("[data-shortcut]").forEach((button) => {
+  button.onclick = () => runShortcut(button.dataset.shortcut);
+});
 document.addEventListener("fullscreenchange", () => {
   if (document.fullscreenElement !== el.learnScreen) {
     el.learnScreen.classList.remove("full-bleed");
@@ -1784,9 +2044,10 @@ el.voiceTranscript.oninput = () => {
 });
 
 function showError(err) {
-  alert(err.message || "Something went wrong.");
+  showToast(err.message || "Something went wrong.", "error");
 }
 
 setAutoVoiceButton();
 updateLearnFullscreenButton();
+el.cardSearchInput.disabled = true;
 Promise.all([loadDecks(), loadSettings()]).catch(showError);

@@ -6,39 +6,148 @@
   <title>Flashcard Learn</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
 </head>
 <body>
-  <div class="bg-shape shape-1"></div>
-  <div class="bg-shape shape-2"></div>
-  <div class="app">
-    <aside class="sidebar card">
-      <div class="sidebar-top">
-        <h1>Decks</h1>
-        <button id="newDeckBtn" class="btn btn-soft">New</button>
+  <div class="app-shell">
+    <aside class="sidebar-shell glass-panel">
+      <div class="brand-block">
+        <div class="brand-mark">FL</div>
+        <div>
+          <p class="eyebrow mb-1">Flashcard Learn</p>
+          <h1 class="brand-title mb-2">Study like it's 2030</h1>
+          <p class="brand-copy mb-0">A cleaner study cockpit for decks, voice drills, and quality passes. Quizlet energy, but sharper.</p>
+        </div>
       </div>
-      <button id="importOpenBtn" class="btn btn-soft full">Import Deck</button>
-      <div id="deckList" class="deck-list"></div>
+
+      <div class="sidebar-search-wrap input-group">
+        <span class="input-group-text border-0"><i class="bi bi-search"></i></span>
+        <input id="deckSearchInput" class="form-control border-0" type="search" placeholder="Search decks, tags, topics..." autocomplete="off" />
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-head">
+          <p class="section-label mb-0">Workspace</p>
+        </div>
+        <div class="sidebar-nav">
+          <button type="button" class="nav-pill active">
+            <i class="bi bi-collection"></i>
+            <span>All Decks</span>
+          </button>
+          <button type="button" class="nav-pill" data-shortcut="learn">
+            <i class="bi bi-stars"></i>
+            <span>Learn Flow</span>
+          </button>
+          <button type="button" class="nav-pill" data-shortcut="quality">
+            <i class="bi bi-shield-check"></i>
+            <span>Quality Pass</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar-section deck-library">
+        <div class="section-head">
+          <div>
+            <p class="section-label mb-1">Deck Library</p>
+            <span id="deckCountBadge" class="count-badge">0 decks</span>
+          </div>
+          <div class="section-actions">
+            <button id="newDeckBtn" class="btn btn-primary btn-sm action-btn">
+              <i class="bi bi-plus-lg"></i>
+              <span>New</span>
+            </button>
+            <button id="importOpenBtn" class="btn btn-outline-light btn-sm action-btn muted-btn">
+              <i class="bi bi-download"></i>
+              <span>Import</span>
+            </button>
+          </div>
+        </div>
+        <div id="deckList" class="deck-list"></div>
+      </div>
+
+      <div class="sidebar-section bookmarks-panel">
+        <div class="section-head">
+          <p class="section-label mb-0">Bookmarks</p>
+        </div>
+        <div class="bookmark-list">
+          <div class="bookmark-card">
+            <span class="bookmark-icon"><i class="bi bi-lightning-charge-fill"></i></span>
+            <div>
+              <strong>Rapid Cram</strong>
+              <p class="mb-0">Jump into active recall fast once a deck is selected.</p>
+            </div>
+          </div>
+          <div class="bookmark-card">
+            <span class="bookmark-icon"><i class="bi bi-sliders"></i></span>
+            <div>
+              <strong>Theme Lab</strong>
+              <p class="mb-0">Tune voice and color settings without leaving the workspace.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </aside>
 
-    <main class="main card">
-      <header class="main-header">
-        <div>
-          <p class="eyebrow">Flashcard App</p>
-          <h2 id="deckTitle">Select a Deck</h2>
+    <main class="main-shell">
+      <header class="topbar glass-panel">
+        <div class="topbar-copy">
+          <p class="eyebrow mb-2">Focused Study Workspace</p>
+          <h2 id="deckTitle" class="workspace-title mb-2">Select a Deck</h2>
+          <p id="deckMeta" class="deck-meta mb-0">Choose a deck to review cards, start a learn session, or run a quick quality pass.</p>
         </div>
-        <div class="header-actions">
-          <button id="addCardBtn" class="btn btn-soft">Add Card</button>
-          <button id="learnBtn" class="btn btn-primary">Learn</button>
-          <button id="reviewBtn" class="btn btn-soft">Review</button>
-          <button id="qualityBtn" class="btn btn-soft">Check Cards</button>
-          <button id="settingsBtn" class="btn btn-soft">Settings</button>
-          <button id="deleteDeckBtn" class="btn btn-danger">Delete</button>
+
+        <div class="topbar-tools">
+          <div class="workspace-search input-group">
+            <span class="input-group-text border-0"><i class="bi bi-search"></i></span>
+            <input id="cardSearchInput" class="form-control border-0" type="search" placeholder="Search cards in the current deck..." autocomplete="off" />
+          </div>
+
+          <div class="toolbar-pills">
+            <button id="learnBtn" class="btn btn-primary toolbar-btn">
+              <i class="bi bi-play-fill"></i>
+              <span>Learn</span>
+            </button>
+            <button id="reviewBtn" class="btn btn-outline-light toolbar-btn muted-btn">
+              <i class="bi bi-arrow-left-right"></i>
+              <span>Review</span>
+            </button>
+            <button id="qualityBtn" class="btn btn-outline-light toolbar-btn muted-btn">
+              <i class="bi bi-patch-check"></i>
+              <span>Check Cards</span>
+            </button>
+          </div>
+
+          <div class="toolbar-utility">
+            <button id="addCardBtn" class="btn btn-outline-light utility-btn muted-btn" aria-label="Add card">
+              <i class="bi bi-plus-square"></i>
+            </button>
+            <button id="settingsBtn" class="btn btn-outline-light utility-btn muted-btn" aria-label="Settings">
+              <i class="bi bi-gear"></i>
+            </button>
+            <button id="deleteDeckBtn" class="btn btn-outline-light utility-btn danger-btn" aria-label="Delete deck">
+              <i class="bi bi-trash3"></i>
+            </button>
+          </div>
         </div>
       </header>
 
-      <section id="cardsTable" class="table-wrap"></section>
+      <section class="spotlight-grid">
+        <article class="spotlight-card glass-panel">
+          <p class="section-label mb-2">Mode</p>
+          <h3 class="spotlight-title">Search-first study canvas</h3>
+          <p class="spotlight-copy mb-0">Browse decks on the left, filter cards from the top, and move between learn, review, and cleanup without visual noise.</p>
+        </article>
+        <article class="spotlight-card glass-panel">
+          <p class="section-label mb-2">Inspiration</p>
+          <h3 class="spotlight-title">Figma calm, Reddit utility</h3>
+          <p class="spotlight-copy mb-0">Pinned workflows in the sidebar. Compact controls in the header. Fewer boxes, more signal.</p>
+        </article>
+      </section>
+
+      <section id="cardsTable" class="workspace-panel glass-panel"></section>
     </main>
   </div>
 
@@ -46,7 +155,7 @@
     <form method="dialog" class="modal-content">
       <div class="modal-head">
         <h3>Import Your Data</h3>
-        <button class="icon-btn">x</button>
+        <button class="icon-btn" aria-label="Close import dialog">&times;</button>
       </div>
       <label>Deck Name</label>
       <input id="importDeckName" type="text" placeholder="Biology Unit 1" />
@@ -88,7 +197,7 @@
         <h3>Create New Deck</h3>
         <div class="create-head-actions">
           <button id="createDeckSubmitBtn" type="button" class="btn btn-primary">Finish</button>
-          <button class="icon-btn">x</button>
+          <button class="icon-btn" aria-label="Close create deck dialog">&times;</button>
         </div>
       </div>
       <p class="create-subtitle">Build your set fast. Add as many cards as you need before saving.</p>
@@ -119,7 +228,7 @@
   </dialog>
 
   <section id="learnScreen" class="screen hidden">
-    <div class="screen-panel card">
+    <div class="screen-panel glass-panel">
       <div class="learn-top">
         <div class="learn-title-block">
           <p class="eyebrow">Learn Mode</p>
@@ -171,12 +280,12 @@
       <div class="learn-actions compact">
         <button id="stillBtn" class="btn btn-warn" disabled>Still Learning</button>
         <button id="correctBtn" class="btn btn-success" disabled>Correct</button>
-        </div>
+      </div>
     </div>
   </section>
 
   <section id="reviewScreen" class="screen hidden">
-    <div class="screen-panel card">
+    <div class="screen-panel glass-panel">
       <div class="learn-top">
         <p id="reviewProgress"></p>
         <button id="closeReviewBtn" class="btn btn-soft">Exit</button>
@@ -204,7 +313,7 @@
     <form method="dialog" class="modal-content">
       <div class="modal-head">
         <h3>Voice Settings</h3>
-        <button class="icon-btn">x</button>
+        <button class="icon-btn" aria-label="Close settings dialog">&times;</button>
       </div>
       <label>OpenRouter API Key</label>
       <input id="openrouterToken" type="password" placeholder="sk-or-..." />
@@ -240,17 +349,17 @@
 
       <label>Theme Builder</label>
       <div class="theme-grid">
-        <div class="theme-item"><span>Background 1</span><input id="themeBg" type="color" value="#eaf3ff" /></div>
-        <div class="theme-item"><span>Background 2</span><input id="themeBg2" type="color" value="#dcecff" /></div>
-        <div class="theme-item"><span>Panel</span><input id="themePanel" type="color" value="#ffffff" /></div>
-        <div class="theme-item"><span>Text</span><input id="themeText" type="color" value="#1d2b4a" /></div>
-        <div class="theme-item"><span>Muted Text</span><input id="themeMuted" type="color" value="#60739d" /></div>
-        <div class="theme-item"><span>Primary</span><input id="themePrimary" type="color" value="#2f7cff" /></div>
-        <div class="theme-item"><span>Primary Dark</span><input id="themePrimaryDark" type="color" value="#2469db" /></div>
-        <div class="theme-item"><span>Danger</span><input id="themeDanger" type="color" value="#ef5a6f" /></div>
-        <div class="theme-item"><span>Success</span><input id="themeSuccess" type="color" value="#34b56f" /></div>
-        <div class="theme-item"><span>Warning</span><input id="themeWarning" type="color" value="#ffac3d" /></div>
-        <div class="theme-item"><span>Focus Ring</span><input id="themeRing" type="color" value="#87b6ff" /></div>
+        <div class="theme-item"><span>Background 1</span><input id="themeBg" type="color" value="#f3efe7" /></div>
+        <div class="theme-item"><span>Background 2</span><input id="themeBg2" type="color" value="#e4dccf" /></div>
+        <div class="theme-item"><span>Panel</span><input id="themePanel" type="color" value="#fffaf3" /></div>
+        <div class="theme-item"><span>Text</span><input id="themeText" type="color" value="#1f2933" /></div>
+        <div class="theme-item"><span>Muted Text</span><input id="themeMuted" type="color" value="#6b7280" /></div>
+        <div class="theme-item"><span>Primary</span><input id="themePrimary" type="color" value="#1f6b5d" /></div>
+        <div class="theme-item"><span>Primary Dark</span><input id="themePrimaryDark" type="color" value="#17493f" /></div>
+        <div class="theme-item"><span>Danger</span><input id="themeDanger" type="color" value="#b85f4a" /></div>
+        <div class="theme-item"><span>Success</span><input id="themeSuccess" type="color" value="#2f7a53" /></div>
+        <div class="theme-item"><span>Warning</span><input id="themeWarning" type="color" value="#b9852b" /></div>
+        <div class="theme-item"><span>Focus Ring</span><input id="themeRing" type="color" value="#8ab6aa" /></div>
       </div>
 
       <div class="modal-actions">
@@ -265,7 +374,7 @@
     <form method="dialog" class="modal-content quality-content">
       <div class="modal-head">
         <h3>Card Quality Review</h3>
-        <button id="qualityCloseBtn" type="button" class="icon-btn">x</button>
+        <button id="qualityCloseBtn" type="button" class="icon-btn" aria-label="Close card quality review">&times;</button>
       </div>
       <p id="qualitySummary" class="quality-summary">Run a check to review spelling, grammar, and possible wrong cards.</p>
       <div class="quality-toolbar">
@@ -295,6 +404,8 @@
       <p id="qualityMsg" class="status"></p>
     </form>
   </dialog>
+
+  <div id="toast" class="toast hidden" aria-live="polite"></div>
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
